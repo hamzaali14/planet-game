@@ -15,8 +15,18 @@ const ss=(a,b,x)=>{const t=Math.min(1,Math.max(0,(x-a)/(b-a)));return t*t*(3-2*t
 // Creates the planet. Exposes getSurfaceInfo(dir) for placing buildings/people, and clearAround(dir,ang) to hide scenery under buildings.
 export function createPlanet({radius=5,detail=26,seed=7}={}){
   const noise=makeNoise(seed),moist=makeNoise(seed+99),jit=makeNoise(seed+5);
+  // A few big chunky continents + small island clusters (domain-warped radial blobs)
+  const cr=mulberry(seed*31),conts=[];
+  const fib=(i,n)=>{const y=1-2*(i+.5)/n,r=Math.sqrt(1-y*y),t=i*2.39996+cr()*.6;return new THREE.Vector3(r*Math.cos(t),y,r*Math.sin(t));};
+  [[0,.6],[1,.48],[2,.55],[3,.42]].forEach(([i,sz])=>conts.push({c:fib(i*2+1,8),r:sz}));
+  for(let i=0;i<7;i++)conts.push({c:new THREE.Vector3().randomDirection(),r:.16+cr()*.12});
+  const wv=new THREE.Vector3();
+  const elev=(d)=>{wv.set(d.x+noise(d.x*1.3,d.y*1.3,d.z*1.3+5,3)*.35,d.y+noise(d.x*1.3+7,d.y*1.3,d.z*1.3,3)*.35,d.z+noise(d.x*1.3,d.y*1.3+9,d.z*1.3,3)*.35).normalize();
+    let best=-1;for(const k of conts){const a=wv.angleTo(k.c);best=Math.max(best,1-a/k.r);}
+    const detail=noise(d.x*2.6+10,d.y*2.6,d.z*2.6,4);
+    return best<0?best*.5-.02:Math.min(.62,best*.6+detail*.3*best-.03);};
   const sample=(d)=>{
-    const e=noise(d.x*1.6+10,d.y*1.6,d.z*1.6)*1.4,m=moist(d.x*2,d.y*2,d.z*2);
+    const e=elev(d),m=moist(d.x*2,d.y*2,d.z*2);
     let b;if(e<0)b=BIOMES.OCEAN;else if(e<.05)b=BIOMES.BEACH;else if(e>.5)b=BIOMES.SNOW;else if(e>.35)b=BIOMES.MOUNTAIN;
     else if(m<-.12||Math.abs(d.y)<.25&&m<.05)b=BIOMES.DESERT;else b=m>.15?BIOMES.FOREST:BIOMES.GRASS;
     const h=e<0?-0.04+e*0.35:0.03+0.1*ss(0.0,0.06,e)+0.22*ss(0.3,0.38,e)+0.25*ss(0.45,0.55,e); return {biome:b,elevation:e,moisture:m,height:radius+h};

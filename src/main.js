@@ -32,3 +32,5 @@ renderer.setAnimationLoop(()=>{const dt=Math.min(clock.getDelta(),.1);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 import { createTown } from './town.js';
 game.town=createTown(game);
+import { createDecor } from "./decor.js";
+game.decor=createDecor(game);

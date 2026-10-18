@@ -43,7 +43,8 @@ function buildMesh(type,level,seed=0){
     const w=mk(G.cyl,M.water,.27);w.scale.set(.6,.02,.6);g.add(w);
     for(const x of [-.32,.32]){const p=mk(G.box,M.wood,.5,x);p.scale.set(.06,.6,.06);g.add(p);}
     const bar=mk(G.cyl,M.wood,.66);bar.rotation.z=Math.PI/2;bar.scale.set(.05,.7,.05);g.add(bar);
-    const r=mk(G.barrel,M.roofs[0],.78);r.scale.set(.85,.3,.55);g.add(r);
+    for(const sg of [-1,1]){const r=mk(G.box,M.roofs[0],.82,0,sg*.15);r.rotation.x=sg*0.6;r.scale.set(.9,.04,.38);g.add(r);}
+    const rp=mk(G.box,M.wood,.93);rp.scale.set(.92,.05,.05);g.add(rp);
     const bk=mk(G.cyl,M.wood,.45);bk.scale.set(.12,.12,.12);g.add(bk);}
   else if(type==='road'){const r=mk(G.box,M.road,.02);r.scale.set(1.2,.04,.5);g.add(r);
     for(const x of [-.35,0,.35]){const d=mk(G.box,M.dash,.045,x);d.scale.set(.16,.01,.05);g.add(d);}}
@@ -83,14 +84,24 @@ export function createTown(game){
     d=d.clone().normalize();
     if(!silent){const err=check(type,d);if(err){say(err);return null;}}
     planet.clearAround&&planet.clearAround(d,FOOT[type]+0.004);
-    const b={type,dir:d,level,pop,grow:0,mesh:null,seed:buildings.length*7+((d.x*1000)|0&255),biome:planet.getSurfaceInfo(d).biome};buildings.push(b);setMesh(b);
+    const b={type,dir:d,level,pop,grow:0,mesh:null,seed:buildings.length*7+((d.x*1000)|0&255),biome:planet.getSurfaceInfo(d).biome};buildings.push(b);setMesh(b);reorientRoads(b);
     if(!silent){say({house:'House built! 🏠',farm:'Farm planted! 🌾',well:'Well dug! 💧',road:'Road laid!'}[type],'#2a9d5ccc');save();}
     return b;
   }
   function setMesh(b){if(b.mesh)root.remove(b.mesh);const m=buildMesh(b.type,b.level,Math.abs(b.seed|0)),s=planet.getSurfaceInfo(b.dir);
     m.position.copy(s.point);m.quaternion.setFromUnitVectors(up,b.dir);
-    if(b.type==='road'){const t=tangent(b.dir);m.quaternion.premultiply(new THREE.Quaternion());m.rotateY(Math.atan2(t.z,t.x));}
+    if(b.type==='road')orientRoad(b,m);
     b.mesh=m;root.add(m);}
+  // roads turn to follow neighbouring roads (line through the 1-2 nearest road pieces)
+  const X=new THREE.Vector3(1,0,0),Z=new THREE.Vector3(0,0,1);
+  function roadNbrs(b){return buildings.filter(o=>o!==b&&o.type==='road'&&o.dir.angleTo(b.dir)<0.07).sort((a,c)=>a.dir.angleTo(b.dir)-c.dir.angleTo(b.dir)).slice(0,2);}
+  function orientRoad(b,m){const nb=roadNbrs(b);let t;
+    if(nb.length===2)t=nb[0].dir.clone().sub(nb[1].dir);else if(nb.length===1)t=nb[0].dir.clone().sub(b.dir);else{t=tangent(b.dir);}
+    t.addScaledVector(b.dir,-t.dot(b.dir));if(t.lengthSq()<1e-12)return;t.normalize();
+    const q0=new THREE.Quaternion().setFromUnitVectors(up,b.dir),lx=X.clone().applyQuaternion(q0),lz=Z.clone().applyQuaternion(q0);
+    m.quaternion.copy(q0);m.rotateY(Math.atan2(-t.dot(lz),t.dot(lx)));
+    const len=nb.length?Math.min(.075,nb[0].dir.angleTo(b.dir))*planet.radius:0;if(len>0)m.children.forEach(c=>{c.scale.x*=Math.max(1,len/(.216*0.8));});}
+  function reorientRoads(b){if(b.type!=='road')return;for(const o of roadNbrs(b))setMesh(o);}
   // tap vs drag detection
   const ray=new THREE.Raycaster(),ndc=new THREE.Vector2(),planetMesh=planet.land;let down=null;
   renderer.domElement.addEventListener('pointerdown',e=>{if(e.isPrimary)down={x:e.clientX,y:e.clientY,t:performance.now(),multi:false};else if(down)down.multi=true;});
@@ -127,7 +138,7 @@ export function createTown(game){
       const t1=tangent(b.dir),t2=new THREE.Vector3().crossVectors(b.dir,t1);
       for(let k=0;k<b.pop&&n<MAX_PEOPLE;k++,n++){const ph=time*(0.3+0.07*k)+k*1.7+bi,r=0.03+0.008*(k%3);
         dd.copy(b.dir).addScaledVector(t1,Math.cos(ph)*r).addScaledVector(t2,Math.sin(ph)*r).normalize();
-        pos.copy(dd).multiplyScalar(planet.getSurfaceInfo(dd).height>planet.radius?planet.getSurfaceInfo(dd).height:planet.radius);
+        pos.copy(dd).multiplyScalar(Math.max(planet.getSurfaceInfo(dd).height,planet.radius)+0.004);
         pos.addScaledVector(dd,Math.abs(Math.sin(ph*14))*0.006);q.setFromUnitVectors(up,dd);m4.compose(pos,q,sc);people.setMatrixAt(n,m4);heads.setMatrixAt(n,m4);}}
     people.count=heads.count=n;people.instanceMatrix.needsUpdate=heads.instanceMatrix.needsUpdate=true;}
   // --- save/load ---
