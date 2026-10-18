@@ -18,7 +18,8 @@ export function createPlanet({radius=5,detail=26,seed=7}={}){
   // A few big chunky continents + small island clusters (domain-warped radial blobs)
   const cr=mulberry(seed*31),conts=[];
   const fib=(i,n)=>{const y=1-2*(i+.5)/n,r=Math.sqrt(1-y*y),t=i*2.39996+cr()*.6;return new THREE.Vector3(r*Math.cos(t),y,r*Math.sin(t));};
-  [[0,.6],[1,.48],[2,.55],[3,.42]].forEach(([i,sz])=>conts.push({c:fib(i*2+1,8),r:sz}));
+  const rq=new THREE.Quaternion();if(seed!==7)rq.setFromEuler(new THREE.Euler(cr()*6.28,cr()*6.28,cr()*6.28));
+  [[0,.6],[1,.48],[2,.55],[3,.42]].forEach(([i,sz])=>conts.push({c:fib(i*2+1,8).applyQuaternion(rq),r:sz}));
   for(let i=0;i<7;i++)conts.push({c:new THREE.Vector3().randomDirection(),r:.16+cr()*.12});
   const wv=new THREE.Vector3();
   const elev=(d)=>{wv.set(d.x+noise(d.x*1.3,d.y*1.3,d.z*1.3+5,3)*.35,d.y+noise(d.x*1.3+7,d.y*1.3,d.z*1.3,3)*.35,d.z+noise(d.x*1.3,d.y*1.3+9,d.z*1.3,3)*.35).normalize();
@@ -106,6 +107,6 @@ export function createPlanet({radius=5,detail=26,seed=7}={}){
   const halo=glow(radius*1.16,THREE.BackSide,'#5fd8ff',2.0,0.75);halo.raycast=()=>{};group.add(halo);
   const rim=glow(radius*1.03,THREE.FrontSide,'#a8ecff',3.0,0.55);rim.raycast=()=>{};group.add(rim);
   water.raycast=()=>{};[trunks,pines,rounds,rocks].forEach(m=>m.raycast=()=>{});
-  return {group,land,radius,clearAround,update:(dt,cam)=>{uTime.value+=dt;if(cam){const k=ss(radius+1.2,radius+5,cam.position.length());rim.material.uniforms.k.value=k;halo.material.uniforms.k.value=.3+.7*k;}},
+  return {group,land,water,radius,conts,clearAround,update:(dt,cam)=>{uTime.value+=dt;if(cam){const k=ss(radius+1.2,radius+5,cam.position.length());rim.material.uniforms.k.value=k;halo.material.uniforms.k.value=.3+.7*k;}},
     getSurfaceInfo:(dir)=>{const d=dir.clone().normalize();const s=sample(d);return {...s,point:d.multiplyScalar(Math.max(s.height,radius))};}};
 }

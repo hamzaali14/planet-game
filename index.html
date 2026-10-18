@@ -1,7 +1,24 @@
 <!doctype html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <link rel="icon" href="data:,"><title>Planet Builder</title>
-<style>html,body{margin:0;height:100%;overflow:hidden;background:radial-gradient(circle at 50% 50%,#3fe0f5 0%,#22b0dc 30%,#1677b8 52%,#0f3f78 78%,#0a2652 100%);touch-action:none;font-family:sans-serif}
-#hud{position:fixed;top:10px;left:10px;color:#fff;background:#0b2f5a99;padding:8px 14px;border-radius:16px;font-size:14px;font-weight:600;pointer-events:none}</style>
-</head><body><div id="hud">🌍 Planet Builder – pick a tool, tap to build · 👀 to spin</div>
-<script type="module" src="src/main.js"></script></body></html>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:radial-gradient(circle at 50% 50%,#3fe0f5 0%,#22b0dc 30%,#1677b8 52%,#0f3f78 78%,#0a2652 100%);touch-action:none;font-family:'Trebuchet MS',system-ui,sans-serif;user-select:none;-webkit-user-select:none}
+#night{position:fixed;inset:0;z-index:0;background:radial-gradient(circle at 50% 50%,#2a3f8f 0%,#18245e 40%,#0b1235 75%,#050820 100%);opacity:0;pointer-events:none}
+#menu{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:radial-gradient(circle at 50% 40%,#5fe6ff 0%,#2aa7e0 35%,#1460a8 70%,#0a2652 100%)}
+#menu h1{margin:0 0 4px;font-size:clamp(34px,8vw,64px);color:#fff;text-shadow:0 4px 0 #0b2f5a,0 8px 20px #0006;letter-spacing:1px}
+#menu .planet{font-size:clamp(70px,16vw,120px);animation:bob 3s ease-in-out infinite}
+#menu p{margin:0 0 10px;color:#e8fbff;font-size:18px;font-weight:bold;text-align:center;max-width:90vw}
+#menu button{width:min(320px,80vw);height:74px;border:0;border-radius:24px;font-size:26px;font-weight:bold;color:#0b2f5a;background:#fff;box-shadow:0 6px 0 #0b2f5a55;touch-action:manipulation;font-family:inherit}
+#menu button.new{background:#ffd23f}#menu button.two{background:#ff9ec0}#menu button:disabled{opacity:.45}
+@keyframes bob{50%{transform:translateY(-12px) rotate(8deg)}}</style>
+</head><body><div id="night"></div>
+<div id="menu"><div class="planet">🪐</div><h1>Planet Builder</h1><p>Watch your little people grow a world. Help them, or shake things up!</p>
+<button class="new" id="bNew">🌍 New Game</button><button class="two" id="b2p">👫 2 Players</button><button id="bCont">▶️ Continue</button></div>
+<script type="module">
+const KEY='planetBuilder.v1';let save=null;try{save=JSON.parse(localStorage.getItem(KEY)||'null');}catch(e){}
+const cont=document.getElementById('bCont');if(!save||!save.b)cont.disabled=true;
+async function go(o){document.getElementById('menu').remove();const m=await import('./src/main.js');m.start(o);}
+const fresh=n=>{localStorage.removeItem(KEY);go({seed:(Math.random()*1e9)|0,players:n,fresh:true});};
+document.getElementById('bNew').onclick=()=>fresh(1);document.getElementById('b2p').onclick=()=>fresh(2);
+cont.onclick=()=>go({seed:save.seed??7,players:save.players||1,fresh:false});
+window.__menu={go,fresh};
+</script></body></html>
